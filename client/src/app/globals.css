@@ -1,0 +1,138 @@
+@import "tailwindcss";
+
+@theme {
+  --font-serif: var(--font-serif);
+  --font-sans: var(--font-sans);
+  
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+
+  --radius-lg: var(--radius);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) - 4px);
+}
+
+:root {
+  --background: #fbfbf9; /* Soft Warm Cream Paper */
+  --foreground: #2d2a26; /* Deep charcoal/warm grey */
+  
+  --card: #ffffff;
+  --card-foreground: #2d2a26;
+  
+  --border: #f0ede6;
+  --input: #f0ede6;
+  
+  --primary: #115e59; /* Calm Teal */
+  --primary-foreground: #faf9f6;
+  
+  --secondary: #f4f1ea;
+  --secondary-foreground: #115e59;
+  
+  --muted: #f4f1ea;
+  --muted-foreground: #78716c;
+  
+  --accent: #f0ede6;
+  --accent-foreground: #115e59;
+  
+  --ring: #115e59;
+  --radius: 0.75rem;
+
+  --font-sans: var(--font-geist-sans);
+  --font-serif: var(--font-lora);
+}
+
+.dark {
+  --background: #111110; /* Very soft matte black */
+  --foreground: #e7e5e4; /* Warm grey/cream text */
+  
+  --card: #161615; /* Slate grey cards */
+  --card-foreground: #e7e5e4;
+  
+  --border: #242422;
+  --input: #242422;
+  
+  --primary: #2dd4bf; /* Vibrant light teal */
+  --primary-foreground: #111110;
+  
+  --secondary: #1e1e1d;
+  --secondary-foreground: #2dd4bf;
+  
+  --muted: #1c1c1a;
+  --muted-foreground: #a8a29e;
+  
+  --accent: #242422;
+  --accent-foreground: #2dd4bf;
+  
+  --ring: #2dd4bf;
+}
+
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+  transition: background-color 0.4s ease, color 0.4s ease;
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+}
+
+/* Custom premium scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--muted-foreground);
+}
+
+/* Interactive animations and styles */
+.glass {
+  background: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.dark .glass {
+  background: rgba(22, 22, 21, 0.6);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.calm-shadow {
+  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.03);
+}
+
+.dark .calm-shadow {
+  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.2);
+}
+
+.mood-amazing { background: linear-gradient(135deg, #fef08a 0%, #fde047 100%); }
+.mood-happy { background: linear-gradient(135deg, #fed7aa 0%, #fdba74 100%); }
+.mood-okay { background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%); }
+.mood-tired { background: linear-gradient(135deg, #e9d5ff 0%, #d8b4fe 100%); }
+.mood-sad { background: linear-gradient(135deg, #bfdbfe 0%, #93c5fd 100%); }
+.mood-angry { background: linear-gradient(135deg, #fecaca 0%, #fca5a5 100%); }
+.mood-anxious { background: linear-gradient(135deg, #ccfbf1 0%, #99f6e4 100%); }
+.mood-grateful { background: linear-gradient(135deg, #fed7e2 0%, #fbcfe8 100%); }
