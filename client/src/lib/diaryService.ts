@@ -32,8 +32,8 @@ export const MOODS = [
   { value: "angry", emoji: "😡", label: "Angry", color: "from-red-200 to-rose-400 text-red-950" },
 ] as const;
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
-const isBackendEnabled = !!API_URL;
+const API_URL = "/api";
+const isBackendEnabled = true;
 
 // Helper to construct headers with JWT
 const getHeaders = async () => {

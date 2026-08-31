@@ -4,7 +4,7 @@ export interface UserProfile {
   name: string;
 }
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
+const API_URL = "/api";
 
 export const authService = {
   async getCurrentUser(): Promise<UserProfile | null> {

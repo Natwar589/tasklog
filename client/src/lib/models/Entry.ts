@@ -1,10 +1,10 @@
-import { Schema, model, Types } from "mongoose";
+import { Schema, model, models } from "mongoose";
 
 const timeLogSchema = new Schema({
   start_time: { type: String, required: true },
   end_time: { type: String, required: true },
   activity: { type: String, required: true },
-  category: { type: String, default: "work" }
+  category: { type: String, default: "work" },
 });
 
 const entrySchema = new Schema(
@@ -20,7 +20,7 @@ const entrySchema = new Schema(
     },
     tags: { type: [String], default: [] },
     is_private: { type: Boolean, default: true },
-    time_logs: { type: [timeLogSchema], default: [] }
+    time_logs: { type: [timeLogSchema], default: [] },
   },
   {
     timestamps: { createdAt: "created_at", updatedAt: "updated_at" },
@@ -30,4 +30,7 @@ const entrySchema = new Schema(
 // Ensure a user can only have one entry per date
 entrySchema.index({ user_id: 1, entry_date: 1 }, { unique: true });
 
-export const Entry = model("Entry", entrySchema);
+// Use existing model if it exists (Next.js hot-reload safe)
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const Entry = (models.Entry as any) || model("Entry", entrySchema);
+
