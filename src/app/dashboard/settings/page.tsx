@@ -1,10 +1,10 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Settings, ShieldCheck, Download, Trash2, Moon, Sun, AlertTriangle, Cloud, UserCheck, X } from "lucide-react";
+import { Settings, ShieldCheck, Download, Trash2, Moon, Sun, AlertTriangle, Cloud, UserCheck, X, Bell, BellOff } from "lucide-react";
 import TopBar from "@/components/TopBar";
 import { useTheme } from "@/hooks/useTheme";
-
+import { useStreakReminder } from "@/hooks/useStreakReminder";
 import { authService, UserProfile } from "@/lib/authService";
 import { diaryService } from "@/lib/diaryService";
 import { useToast } from "@/components/ui/Toast";
@@ -13,13 +13,49 @@ import { AnimatePresence, motion } from "framer-motion";
 export default function SettingsPage() {
   const { theme, toggleTheme } = useTheme();
   const { success, error, warning } = useToast();
+  const { requestPermission, setReminder, getReminderSettings, sendTestNotification } = useStreakReminder();
   
   const [user, setUser] = useState<UserProfile | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [reminderTime, setReminderTime] = useState("21:00");
+  const [reminderEnabled, setReminderEnabled] = useState(false);
+  const [notifPermission, setNotifPermission] = useState<string>("default");
 
   useEffect(() => {
     authService.getCurrentUser().then(setUser);
-  }, []);
+    const { time, enabled } = getReminderSettings();
+    setReminderTime(time);
+    setReminderEnabled(enabled);
+    if (typeof window !== "undefined" && "Notification" in window) {
+      setNotifPermission(Notification.permission);
+    }
+  }, [getReminderSettings]);
+
+  const handleReminderSave = async () => {
+    const granted = reminderEnabled ? (await requestPermission()) === "granted" : true;
+    setNotifPermission(typeof window !== "undefined" && "Notification" in window ? Notification.permission : "default");
+    if (reminderEnabled && !granted) {
+      warning("Browser notifications are blocked. Please allow them in your browser settings.");
+      return;
+    }
+    setReminder(reminderTime, reminderEnabled);
+    success(reminderEnabled ? `Daily reminder set for ${reminderTime}!` : "Reminder disabled.");
+  };
+
+  const handleTestReminder = () => {
+    sendTestNotification((type, msg) => {
+      if (type === "success") {
+        success(msg);
+      } else if (type === "warning") {
+        warning(msg);
+      } else {
+        success(msg);
+      }
+      if (typeof window !== "undefined" && "Notification" in window) {
+        setNotifPermission(Notification.permission);
+      }
+    });
+  };
 
   // Export JSON helper
   const handleExportData = async () => {
@@ -68,6 +104,70 @@ export default function SettingsPage() {
               </div>
             </div>
           )}
+        </div>
+
+        {/* Daily Reminder */}
+        <div className="bg-card border border-border rounded-2xl p-6 calm-shadow space-y-5">
+          <h4 className="font-serif font-bold text-base text-foreground flex items-center gap-2">
+            <Bell className="w-5 h-5 text-primary" /> Daily Reminder
+          </h4>
+
+          {/* Enable toggle */}
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-foreground">Enable daily reminder</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Get a browser notification to log your day</p>
+            </div>
+            <button
+              onClick={() => setReminderEnabled((p) => !p)}
+              className={`relative w-11 h-6 rounded-full transition-colors calm-shadow ${reminderEnabled ? "bg-primary" : "bg-muted border border-border"}`}
+            >
+              <div className={`absolute top-0.5 w-5 h-5 rounded-full bg-white transition-transform shadow-sm ${reminderEnabled ? "translate-x-5" : "translate-x-0.5"}`} />
+            </button>
+          </div>
+
+          {/* Time picker */}
+          <div className="flex items-center gap-4">
+            <div className="space-y-1.5 flex-1">
+              <label className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground block">Reminder Time</label>
+              <input
+                type="time"
+                value={reminderTime}
+                onChange={(e) => setReminderTime(e.target.value)}
+                className="w-full px-4 py-2.5 bg-muted/40 border border-border rounded-xl text-sm font-medium text-foreground outline-none focus:border-primary/50 transition-colors"
+              />
+            </div>
+          </div>
+
+          {/* Permission status */}
+          {notifPermission === "denied" && (
+            <p className="text-xs text-rose-500 flex items-center gap-1.5">
+              <BellOff className="w-3.5 h-3.5" />
+              Notifications are blocked. Please allow them in your browser settings.
+            </p>
+          )}
+          {notifPermission === "granted" && (
+            <p className="text-xs text-teal-600 dark:text-teal-400 flex items-center gap-1.5">
+              <Bell className="w-3.5 h-3.5" />
+              Notifications are enabled for this app.
+            </p>
+          )}
+
+          <div className="flex gap-3">
+            <button
+              onClick={handleReminderSave}
+              className="flex-1 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-semibold transition-all calm-shadow hover:opacity-90"
+            >
+              Save Reminder
+            </button>
+            <button
+              onClick={handleTestReminder}
+              className="px-4 py-2.5 bg-muted border border-border text-foreground rounded-xl text-sm font-semibold transition-all hover:bg-muted/80"
+              title="Send a test notification"
+            >
+              Test
+            </button>
+          </div>
         </div>
 
         {/* Preferences / Theme */}

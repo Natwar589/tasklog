@@ -1,10 +1,23 @@
 import { Schema, model, models } from "mongoose";
 
+const subtaskSchema = new Schema({
+  id: { type: String, required: true },
+  text: { type: String, required: true },
+  done: { type: Boolean, default: false },
+});
+
 const timeLogSchema = new Schema({
   start_time: { type: String, required: true },
   end_time: { type: String, required: true },
   activity: { type: String, required: true },
+  description: { type: String, default: "" },
   category: { type: String, default: "work" },
+  priority: { type: String, enum: ["P1", "P2", "P3"], default: null },
+  energy_level: { type: String, enum: ["High", "Medium", "Low", ""], default: "" },
+  outcome: { type: String, default: "" },
+  tags: { type: [String], default: [] },
+  recurrence: { type: String, enum: ["daily", "weekly", null], default: null },
+  subtasks: { type: [subtaskSchema], default: [] },
 });
 
 const entrySchema = new Schema(
@@ -21,6 +34,7 @@ const entrySchema = new Schema(
     tags: { type: [String], default: [] },
     is_private: { type: Boolean, default: true },
     time_logs: { type: [timeLogSchema], default: [] },
+    gratitude: { type: [String], default: [] },
   },
   {
     timestamps: { createdAt: "created_at", updatedAt: "updated_at" },

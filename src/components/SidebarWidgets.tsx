@@ -1,9 +1,11 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Flame, Sparkles, BookOpen, CheckCircle, RefreshCw, MessageSquareCode } from "lucide-react";
+import { Flame, Sparkles, BookOpen, CheckCircle, RefreshCw, MessageSquareCode, Trophy } from "lucide-react";
 import { DiaryEntry } from "@/lib/diaryService";
-import { format } from "date-fns";
+import { format, subDays } from "date-fns";
+import PomodoroTimer from "./PomodoroTimer";
+import confetti from "canvas-confetti";
 
 interface SidebarWidgetsProps {
   entries: DiaryEntry[];
@@ -23,6 +25,8 @@ const PROMPTS = [
   "Write about a person who made you smile today.",
 ];
 
+const STREAK_MILESTONES = [7, 30, 100, 365];
+
 export default function SidebarWidgets({ entries, streak, currentDateStr, onUsePrompt }: SidebarWidgetsProps) {
   const [promptIndex, setPromptIndex] = useState(0);
   const [memory, setMemory] = useState<DiaryEntry | null>(null);
@@ -31,12 +35,42 @@ export default function SidebarWidgets({ entries, streak, currentDateStr, onUseP
     nature: false,
     lovedOne: false,
   });
+  const [lastCelebrated, setLastCelebrated] = useState<number>(0);
+
+  // Build 7-day entry map
+  const entryDates = new Set(entries.map((e) => e.entry_date));
+  const last7Days = Array.from({ length: 7 }, (_, i) => {
+    const d = subDays(new Date(), 6 - i);
+    const dateStr = d.toISOString().split("T")[0];
+    return {
+      dateStr,
+      label: format(d, "EEE"),
+      hasEntry: entryDates.has(dateStr),
+      isToday: dateStr === new Date().toISOString().split("T")[0],
+    };
+  });
 
   // Pick prompt based on date or rotate
   useEffect(() => {
     const day = new Date(currentDateStr).getDate() || 0;
     setPromptIndex(day % PROMPTS.length);
   }, [currentDateStr]);
+
+  // Milestone celebrations
+  useEffect(() => {
+    const milestone = STREAK_MILESTONES.find(
+      (m) => streak.currentStreak >= m && lastCelebrated < m
+    );
+    if (milestone) {
+      setLastCelebrated(milestone);
+      confetti({
+        particleCount: 150,
+        spread: 80,
+        origin: { y: 0.6 },
+        colors: ["#2dd4bf", "#f59e0b", "#f472b6", "#a78bfa"],
+      });
+    }
+  }, [streak.currentStreak, lastCelebrated]);
 
   const rotatePrompt = () => {
     setPromptIndex((prev) => (prev + 1) % PROMPTS.length);
@@ -60,35 +94,77 @@ export default function SidebarWidgets({ entries, streak, currentDateStr, onUseP
     });
 
     if (pastEntries.length > 0) {
-      // Pick the most recent memory from same calendar day
       setMemory(pastEntries[0]);
     } else {
       setMemory(null);
     }
   }, [entries, currentDateStr]);
 
+  // Streak milestone label
+  const nextMilestone = STREAK_MILESTONES.find((m) => streak.currentStreak < m);
+
   return (
     <div className="space-y-6">
-      {/* Streak Card */}
+      {/* Streak Card with 7-day strip */}
       <div className="bg-card border border-border rounded-2xl p-5 calm-shadow relative overflow-hidden">
         {/* Background Subtle Flame Glow */}
         <div className="absolute right-0 bottom-0 w-24 h-24 bg-amber-500/5 rounded-full blur-2xl -z-10" />
 
-        <div className="flex items-start justify-between">
+        <div className="flex items-start justify-between mb-4">
           <div>
             <span className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground">Writing Streak</span>
             <h4 className="text-2xl font-bold tracking-tight text-foreground mt-1 flex items-baseline gap-1.5">
               {streak.currentStreak} <span className="text-sm font-medium text-muted-foreground">days</span>
             </h4>
             <p className="text-xs text-muted-foreground mt-1">
-              Longest streak: <span className="font-semibold text-foreground">{streak.longestStreak} days</span>
+              Longest: <span className="font-semibold text-foreground">{streak.longestStreak} days</span>
             </p>
           </div>
           <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center text-amber-500 calm-shadow">
             <Flame className="w-5.5 h-5.5 fill-amber-500/20" />
           </div>
         </div>
+
+        {/* 7-day strip */}
+        <div className="flex items-center justify-between gap-1">
+          {last7Days.map((day) => (
+            <div key={day.dateStr} className="flex flex-col items-center gap-1.5 flex-1">
+              <span className="text-[9px] uppercase font-bold text-muted-foreground">{day.label}</span>
+              <div
+                className={`w-full h-2 rounded-full transition-all ${
+                  day.hasEntry
+                    ? "bg-amber-400"
+                    : day.isToday
+                    ? "bg-border border-2 border-amber-300/40"
+                    : "bg-border"
+                }`}
+              />
+            </div>
+          ))}
+        </div>
+
+        {/* Next milestone progress */}
+        {nextMilestone && (
+          <div className="mt-4 space-y-1.5">
+            <div className="flex justify-between text-[10px] text-muted-foreground font-medium">
+              <span className="flex items-center gap-1">
+                <Trophy className="w-3 h-3 text-amber-500" />
+                Next milestone: {nextMilestone} days
+              </span>
+              <span>{streak.currentStreak}/{nextMilestone}</span>
+            </div>
+            <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden">
+              <div
+                className="h-full bg-gradient-to-r from-amber-400 to-orange-400 rounded-full transition-all duration-700"
+                style={{ width: `${Math.min((streak.currentStreak / nextMilestone) * 100, 100)}%` }}
+              />
+            </div>
+          </div>
+        )}
       </div>
+
+      {/* Pomodoro Timer */}
+      <PomodoroTimer />
 
       {/* Daily Writing Prompt */}
       <div className="bg-card border border-border rounded-2xl p-5 calm-shadow space-y-3">
@@ -105,7 +181,7 @@ export default function SidebarWidgets({ entries, streak, currentDateStr, onUseP
           </button>
         </div>
         <p className="font-serif italic text-sm text-foreground/90 leading-relaxed">
-          "{PROMPTS[promptIndex]}"
+          &ldquo;{PROMPTS[promptIndex]}&rdquo;
         </p>
         <button
           onClick={() => onUsePrompt(PROMPTS[promptIndex])}
@@ -123,42 +199,32 @@ export default function SidebarWidgets({ entries, streak, currentDateStr, onUseP
           </span>
           <h5 className="font-semibold text-sm text-foreground truncate">{memory.title || "Untitled log"}</h5>
           <p className="text-xs text-muted-foreground leading-relaxed line-clamp-3 italic">
-            "{memory.content}"
+            &ldquo;{memory.content}&rdquo;
           </p>
         </div>
       )}
 
       {/* Reflection Checklist */}
       <div className="bg-card border border-border rounded-2xl p-5 calm-shadow space-y-3">
-        <span className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground">Quick Reflections</span>
+        <span className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground flex items-center gap-1.5">
+          <CheckCircle className="w-3.5 h-3.5 text-primary" /> Quick Reflections
+        </span>
         <div className="space-y-2">
-          <label className="flex items-center gap-2.5 text-xs text-foreground/80 cursor-pointer select-none">
-            <input
-              type="checkbox"
-              checked={checklist.water}
-              onChange={(e) => setChecklist({ ...checklist, water: e.target.checked })}
-              className="w-4 h-4 rounded border-border text-primary focus:ring-primary accent-primary"
-            />
-            <span className={checklist.water ? "line-through text-muted-foreground" : ""}>Drank enough water today</span>
-          </label>
-          <label className="flex items-center gap-2.5 text-xs text-foreground/80 cursor-pointer select-none">
-            <input
-              type="checkbox"
-              checked={checklist.nature}
-              onChange={(e) => setChecklist({ ...checklist, nature: e.target.checked })}
-              className="w-4 h-4 rounded border-border text-primary focus:ring-primary accent-primary"
-            />
-            <span className={checklist.nature ? "line-through text-muted-foreground" : ""}>Spent time outside/in nature</span>
-          </label>
-          <label className="flex items-center gap-2.5 text-xs text-foreground/80 cursor-pointer select-none">
-            <input
-              type="checkbox"
-              checked={checklist.lovedOne}
-              onChange={(e) => setChecklist({ ...checklist, lovedOne: e.target.checked })}
-              className="w-4 h-4 rounded border-border text-primary focus:ring-primary accent-primary"
-            />
-            <span className={checklist.lovedOne ? "line-through text-muted-foreground" : ""}>Connected with a loved one</span>
-          </label>
+          {[
+            { key: "water" as const, label: "Drank enough water today" },
+            { key: "nature" as const, label: "Spent time outside/in nature" },
+            { key: "lovedOne" as const, label: "Connected with a loved one" },
+          ].map(({ key, label }) => (
+            <label key={key} className="flex items-center gap-2.5 text-xs text-foreground/80 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={checklist[key]}
+                onChange={(e) => setChecklist({ ...checklist, [key]: e.target.checked })}
+                className="w-4 h-4 rounded border-border text-primary focus:ring-primary accent-primary"
+              />
+              <span className={checklist[key] ? "line-through text-muted-foreground" : ""}>{label}</span>
+            </label>
+          ))}
         </div>
       </div>
     </div>

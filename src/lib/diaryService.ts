@@ -1,10 +1,23 @@
 
+export interface Subtask {
+  id: string;
+  text: string;
+  done: boolean;
+}
+
 export interface TimeLog {
   id?: string;
-  start_time: string;
-  end_time: string;
-  activity: string;
+  start_time: string; // HH:MM
+  end_time: string; // HH:MM
+  activity: string; // Task Title
+  description?: string; // Detailed notes, key outcomes or blockers
   category: string;
+  priority?: "P1" | "P2" | "P3";
+  energy_level?: "High" | "Medium" | "Low" | "";
+  outcome?: string; // e.g. "Completed", "In Progress", "Blocked"
+  tags?: string[];
+  recurrence?: "daily" | "weekly" | null;
+  subtasks?: Subtask[];
 }
 
 export interface DiaryEntry {
@@ -17,6 +30,7 @@ export interface DiaryEntry {
   tags: string[];
   is_private: boolean;
   time_logs?: TimeLog[];
+  gratitude?: string[];
   created_at: string;
   updated_at: string;
 }
@@ -226,6 +240,7 @@ export const diaryService = {
           tags: entry.tags,
           is_private: entry.is_private,
           time_logs: entry.time_logs || [],
+          gratitude: entry.gratitude || [],
           updated_at: nowStr,
         };
         entries[index] = savedEntry;
@@ -239,6 +254,7 @@ export const diaryService = {
           tags: entry.tags,
           is_private: entry.is_private,
           time_logs: entry.time_logs || [],
+          gratitude: entry.gratitude || [],
           created_at: nowStr,
           updated_at: nowStr,
         };

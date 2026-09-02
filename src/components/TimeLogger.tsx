@@ -241,9 +241,16 @@ export default function TimeLogger({ timeLogs = [], onChange }: TimeLoggerProps)
   const [startTime, setStartTime] = useState("09:00");
   const [endTime, setEndTime] = useState("10:00");
   const [activity, setActivity] = useState("");
+  const [description, setDescription] = useState("");
   const [category, setCategory] = useState("Coding");
+  const [priority, setPriority] = useState<"P1" | "P2" | "P3" | "">("");
+  const [energyLevel, setEnergyLevel] = useState<"High" | "Medium" | "Low" | "">("");
+  const [outcome, setOutcome] = useState<string>("");
+  const [recurrence, setRecurrence] = useState<"daily" | "weekly" | "">("");
   const [validationError, setValidationError] = useState("");
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [expandedLog, setExpandedLog] = useState<string | null>(null);
+  const [subtaskInput, setSubtaskInput] = useState<Record<string, string>>({});
 
   // Sort logs by start time
   const sortedLogs = useMemo(() => {
@@ -326,16 +333,61 @@ export default function TimeLogger({ timeLogs = [], onChange }: TimeLoggerProps)
       start_time: startTime,
       end_time: endTime,
       activity: activity.trim(),
-      category: category
+      description: description.trim() || undefined,
+      category: category,
+      priority: priority || undefined,
+      energy_level: energyLevel || undefined,
+      outcome: outcome || undefined,
+      recurrence: recurrence || null,
+      subtasks: [],
     };
 
     onChange([...timeLogs, newLog]);
     setActivity("");
+    setDescription("");
+    setPriority("");
+    setEnergyLevel("");
+    setOutcome("");
+    setRecurrence("");
     setIsFormOpen(false);
   };
 
   const handleDeleteLog = (id: string) => {
     onChange(timeLogs.filter((log) => log.id !== id));
+  };
+
+  const handleToggleSubtask = (logId: string, subtaskId: string) => {
+    onChange(
+      timeLogs.map((log) =>
+        log.id === logId
+          ? {
+              ...log,
+              subtasks: (log.subtasks || []).map((s) =>
+                s.id === subtaskId ? { ...s, done: !s.done } : s
+              ),
+            }
+          : log
+      )
+    );
+  };
+
+  const handleAddSubtask = (logId: string) => {
+    const text = (subtaskInput[logId] || "").trim();
+    if (!text) return;
+    onChange(
+      timeLogs.map((log) =>
+        log.id === logId
+          ? {
+              ...log,
+              subtasks: [
+                ...(log.subtasks || []),
+                { id: crypto.randomUUID(), text, done: false },
+              ],
+            }
+          : log
+      )
+    );
+    setSubtaskInput((prev) => ({ ...prev, [logId]: "" }));
   };
 
   const handleCopyLogs = () => {
@@ -466,30 +518,129 @@ export default function TimeLogger({ timeLogs = [], onChange }: TimeLoggerProps)
                 </div>
               </div>
 
-              {/* Row 2: Accomplishment input & Add button */}
-              <div className="grid grid-cols-1 md:grid-cols-12 gap-4 pt-2 border-t border-border/40">
-                {/* Description Input */}
-                <div className="md:col-span-9 space-y-1">
-                  <span className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground">What task did you log?</span>
+              {/* Row 2: Title & Details */}
+              <div className="space-y-3 pt-2 border-t border-border/40">
+                <div className="space-y-1">
+                  <span className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground">What task did you accomplish? *</span>
                   <input
                     type="text"
-                    placeholder="e.g. Redesigned user dashboard UI components"
+                    placeholder="e.g. Redesigned dashboard UI & added analytics"
                     value={activity}
                     onChange={(e) => setActivity(e.target.value)}
                     className="w-full p-2.5 bg-muted/40 border border-border rounded-xl text-sm focus:ring-1 focus:ring-primary focus:border-primary focus:bg-card outline-none text-foreground placeholder:text-muted-foreground/45 transition-colors font-medium"
                   />
                 </div>
 
-                {/* Button */}
-                <div className="md:col-span-3 flex items-end">
-                  <button
-                    type="submit"
-                    className="w-full py-2.5 bg-primary text-primary-foreground hover:opacity-90 rounded-xl transition-all font-bold text-xs calm-shadow flex items-center justify-center gap-1.5 cursor-pointer h-[42px]"
-                  >
-                    <Check className="w-4 h-4" />
-                    <span>Add to Timeline</span>
-                  </button>
+                <div className="space-y-1">
+                  <span className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground">Details, Notes & Key Deliverables (Optional)</span>
+                  <textarea
+                    rows={2}
+                    placeholder="Write detailed notes, context, outcomes, or blockers..."
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    className="w-full p-2.5 bg-muted/40 border border-border rounded-xl text-xs focus:ring-1 focus:ring-primary focus:border-primary focus:bg-card outline-none text-foreground placeholder:text-muted-foreground/45 transition-colors font-medium resize-none leading-relaxed"
+                  />
                 </div>
+              </div>
+
+              {/* Row 3: Priority, Energy, Outcome & Recurrence */}
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 pt-2 border-t border-border/40">
+                {/* Priority */}
+                <div className="space-y-1.5">
+                  <span className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground block">Priority</span>
+                  <div className="flex gap-1">
+                    {(["P1", "P2", "P3"] as const).map((p) => (
+                      <button
+                        key={p}
+                        type="button"
+                        onClick={() => setPriority(priority === p ? "" : p)}
+                        className={`flex-1 py-1.5 rounded-lg text-xs font-bold border transition-all cursor-pointer ${
+                          priority === p
+                            ? p === "P1"
+                              ? "bg-rose-500 text-white border-rose-500"
+                              : p === "P2"
+                              ? "bg-amber-500 text-white border-amber-500"
+                              : "bg-sky-500 text-white border-sky-500"
+                            : "bg-muted/40 hover:bg-muted/70 text-muted-foreground border-border"
+                        }`}
+                      >
+                        {p}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Energy */}
+                <div className="space-y-1.5">
+                  <span className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground block">Energy Level</span>
+                  <div className="flex gap-1">
+                    {([
+                      { v: "High", label: "🔥 High" },
+                      { v: "Medium", label: "⚡ Steady" },
+                      { v: "Low", label: "🔋 Low" },
+                    ] as const).map(({ v, label }) => (
+                      <button
+                        key={v}
+                        type="button"
+                        onClick={() => setEnergyLevel(energyLevel === v ? "" : v)}
+                        className={`flex-1 py-1.5 rounded-lg text-[10px] font-bold border transition-all cursor-pointer whitespace-nowrap ${
+                          energyLevel === v
+                            ? "bg-primary text-primary-foreground border-primary"
+                            : "bg-muted/40 hover:bg-muted/70 text-muted-foreground border-border"
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Outcome */}
+                <div className="space-y-1.5">
+                  <span className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground block">Outcome</span>
+                  <select
+                    value={outcome}
+                    onChange={(e) => setOutcome(e.target.value)}
+                    className="w-full p-2 bg-muted/40 border border-border rounded-lg text-xs font-medium text-foreground outline-none focus:border-primary/50"
+                  >
+                    <option value="">Select status</option>
+                    <option value="Completed">✅ Completed</option>
+                    <option value="In Progress">🚧 In Progress</option>
+                    <option value="Blocked">⚠️ Blocked</option>
+                  </select>
+                </div>
+
+                {/* Recurrence */}
+                <div className="space-y-1.5">
+                  <span className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground block">Repeat</span>
+                  <div className="flex gap-1">
+                    {(["daily", "weekly"] as const).map((r) => (
+                      <button
+                        key={r}
+                        type="button"
+                        onClick={() => setRecurrence(recurrence === r ? "" : r)}
+                        className={`flex-1 py-1.5 rounded-lg text-xs font-semibold border transition-all cursor-pointer capitalize ${
+                          recurrence === r
+                            ? "bg-violet-500 text-white border-violet-500"
+                            : "bg-muted/40 hover:bg-muted/70 text-muted-foreground border-border"
+                        }`}
+                      >
+                        🔁 {r}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Submit Button */}
+              <div className="pt-2 flex justify-end">
+                <button
+                  type="submit"
+                  className="px-6 py-2.5 bg-primary text-primary-foreground hover:opacity-90 rounded-xl transition-all font-bold text-xs calm-shadow flex items-center justify-center gap-1.5 cursor-pointer h-[40px]"
+                >
+                  <Check className="w-4 h-4" />
+                  <span>Add to Timeline</span>
+                </button>
               </div>
 
               {validationError && (
@@ -542,36 +693,131 @@ export default function TimeLogger({ timeLogs = [], onChange }: TimeLoggerProps)
                       {/* Timeline dot with subtle glow */}
                       <div className={`absolute -left-[31.5px] top-2.5 w-2.5 h-2.5 rounded-full ring-4 ring-card ${catInfo.dotColor} calm-shadow`} />
 
-                      {/* Content Card with hover zoom */}
-                      <div className="flex items-start justify-between gap-4 p-4 bg-card hover:bg-muted/10 border border-border/80 hover:border-primary/20 rounded-2xl calm-shadow hover:-translate-y-0.5 transition-all duration-300">
-                        <div className="space-y-2">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className="text-xs font-bold text-foreground flex items-center gap-1">
-                              <Clock className="w-3.5 h-3.5 text-muted-foreground/85" />
-                              {log.start_time} - {log.end_time}
-                            </span>
-                            <span className="text-[10px] font-bold text-muted-foreground/80">
-                              ({durationText})
-                            </span>
-                            <span className={`text-[9px] font-bold tracking-wider uppercase px-2.5 py-0.5 rounded-full border bg-gradient-to-br ${catInfo.color}`}>
-                              {log.category}
-                            </span>
+                      {/* Content Card */}
+                      <div className="p-4 bg-card hover:bg-muted/10 border border-border/80 hover:border-primary/20 rounded-2xl calm-shadow hover:-translate-y-0.5 transition-all duration-300">
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="space-y-2 flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="text-xs font-bold text-foreground flex items-center gap-1">
+                                <Clock className="w-3.5 h-3.5 text-muted-foreground/85" />
+                                {log.start_time} - {log.end_time}
+                              </span>
+                              <span className="text-[10px] font-bold text-muted-foreground/80">
+                                ({durationText})
+                              </span>
+                              <span className={`text-[9px] font-bold tracking-wider uppercase px-2.5 py-0.5 rounded-full border bg-gradient-to-br ${catInfo.color}`}>
+                                {log.category}
+                              </span>
+                              {log.priority && (
+                                <span className={`text-[9px] font-bold tracking-wider uppercase px-2 py-0.5 rounded-full ${
+                                  log.priority === "P1"
+                                    ? "bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20"
+                                    : log.priority === "P2"
+                                    ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20"
+                                    : "bg-sky-500/10 text-sky-600 dark:text-sky-400 border border-sky-500/20"
+                                }`}>
+                                  {log.priority}
+                                </span>
+                              )}
+                              {log.energy_level && (
+                                <span className="text-[9px] font-bold tracking-wider px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">
+                                  {log.energy_level === "High" ? "🔥 High Energy" : log.energy_level === "Medium" ? "⚡ Steady" : "🔋 Low Energy"}
+                                </span>
+                              )}
+                              {log.outcome && (
+                                <span className={`text-[9px] font-bold tracking-wider px-2 py-0.5 rounded-full border ${
+                                  log.outcome === "Completed"
+                                    ? "bg-teal-500/10 text-teal-600 dark:text-teal-400 border-teal-500/20"
+                                    : log.outcome === "Blocked"
+                                    ? "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20"
+                                    : "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20"
+                                }`}>
+                                  {log.outcome}
+                                </span>
+                              )}
+                              {log.recurrence && (
+                                <span className="text-[9px] font-bold tracking-wider uppercase px-2 py-0.5 rounded-full bg-violet-500/10 text-violet-600 dark:text-violet-400 border border-violet-500/20">
+                                  🔁 {log.recurrence}
+                                </span>
+                              )}
+                            </div>
+
+                            <h4 className="text-sm font-semibold text-foreground leading-snug">
+                              {log.activity}
+                            </h4>
+
+                            {log.description && (
+                              <p className="text-xs text-muted-foreground leading-relaxed bg-muted/30 p-2.5 rounded-xl border border-border/40 font-sans">
+                                {log.description}
+                              </p>
+                            )}
+
+                            {/* Subtasks */}
+                            {log.id && (
+                              <div className="space-y-1.5 pt-1">
+                                {(log.subtasks || []).map((s) => (
+                                  <label key={s.id} className="flex items-center gap-2 cursor-pointer group/sub">
+                                    <input
+                                      type="checkbox"
+                                      checked={s.done}
+                                      onChange={() => log.id && handleToggleSubtask(log.id, s.id)}
+                                      className="w-3.5 h-3.5 rounded border-border accent-primary"
+                                    />
+                                    <span className={`text-xs leading-snug ${s.done ? "line-through text-muted-foreground" : "text-foreground/80"}`}>
+                                      {s.text}
+                                    </span>
+                                  </label>
+                                ))}
+                                {/* Add subtask input */}
+                                {expandedLog === log.id ? (
+                                  <div className="flex gap-1.5 mt-2">
+                                    <input
+                                      type="text"
+                                      value={subtaskInput[log.id] || ""}
+                                      onChange={(e) => setSubtaskInput((p) => ({ ...p, [log.id!]: e.target.value }))}
+                                      onKeyDown={(e) => e.key === "Enter" && log.id && handleAddSubtask(log.id)}
+                                      placeholder="Add subtask..."
+                                      className="flex-1 px-2.5 py-1.5 text-xs bg-muted/40 border border-border rounded-lg outline-none focus:border-primary/40"
+                                      autoFocus
+                                    />
+                                    <button
+                                      type="button"
+                                      onClick={() => log.id && handleAddSubtask(log.id)}
+                                      className="px-2.5 py-1 bg-primary text-primary-foreground text-xs rounded-lg font-semibold"
+                                    >
+                                      Add
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => setExpandedLog(null)}
+                                      className="px-2 py-1 bg-muted text-muted-foreground text-xs rounded-lg"
+                                    >
+                                      ✕
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    onClick={() => setExpandedLog(expandedLog === log.id ? null : (log.id || null))}
+                                    className="text-[10px] text-muted-foreground hover:text-primary font-semibold flex items-center gap-1 mt-1 transition-colors"
+                                  >
+                                    <Plus className="w-3 h-3" /> Add subtask
+                                  </button>
+                                )}
+                              </div>
+                            )}
                           </div>
 
-                          <p className="text-sm font-serif text-foreground/90 leading-relaxed pr-2">
-                            {log.activity}
-                          </p>
+                          {/* Delete task button */}
+                          <button
+                            type="button"
+                            onClick={() => log.id && handleDeleteLog(log.id)}
+                            className="opacity-0 group-hover:opacity-100 p-1.5 border border-transparent hover:border-rose-500/10 hover:bg-rose-500/5 text-muted-foreground hover:text-rose-500 rounded-xl transition-all cursor-pointer shrink-0"
+                            title="Delete task"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
                         </div>
-
-                        {/* Delete task button */}
-                        <button
-                          type="button"
-                          onClick={() => log.id && handleDeleteLog(log.id)}
-                          className="opacity-0 group-hover:opacity-100 p-1.5 border border-transparent hover:border-rose-500/10 hover:bg-rose-500/5 text-muted-foreground hover:text-rose-500 rounded-xl transition-all cursor-pointer"
-                          title="Delete task"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
                       </div>
                     </motion.div>
                   );

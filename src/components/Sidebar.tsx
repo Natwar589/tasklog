@@ -4,7 +4,7 @@ import React from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { BookOpen, Calendar, BookText, BarChart3, Settings, LogOut, Sparkles } from "lucide-react";
+import { BookOpen, Calendar, BookText, BarChart3, Settings, LogOut, Sparkles, LineChart, CalendarCheck, Compass } from "lucide-react";
 import { authService, UserProfile } from "@/lib/authService";
 import { useToast } from "@/components/ui/Toast";
 
@@ -32,7 +32,10 @@ export default function Sidebar({ user }: SidebarProps) {
     { name: "Today", href: "/dashboard", icon: BookOpen },
     { name: "Calendar", href: "/dashboard/calendar", icon: Calendar },
     { name: "Timeline", href: "/dashboard/timeline", icon: BookText },
+    { name: "Weekly", href: "/dashboard/weekly", icon: CalendarCheck },
+    { name: "Roadmap", href: "/dashboard/roadmap", icon: Compass },
     { name: "Moods", href: "/dashboard/mood", icon: BarChart3 },
+    { name: "Analytics", href: "/dashboard/analytics", icon: LineChart },
     { name: "Settings", href: "/dashboard/settings", icon: Settings },
   ];
 

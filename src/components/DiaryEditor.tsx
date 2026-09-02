@@ -1,10 +1,13 @@
 "use client";
 
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Save, Trash2, Calendar as CalendarIcon, Check, CloudLightning, ShieldCheck, HelpCircle } from "lucide-react";
 import MoodSelector from "./MoodSelector";
 import TagInput from "./TagInput";
 import TimeLogger from "./TimeLogger";
+import GratitudeInput from "./GratitudeInput";
+import TemplateSelector from "./TemplateSelector";
+import ExportButton from "./ExportButton";
 import { DiaryEntry, TimeLog } from "@/lib/diaryService";
 import { motion, AnimatePresence } from "framer-motion";
 import { useToast } from "@/components/ui/Toast";
@@ -34,6 +37,7 @@ export default function DiaryEditor({
   const [tags, setTags] = useState<string[]>([]);
   const [isPrivate, setIsPrivate] = useState(true);
   const [timeLogs, setTimeLogs] = useState<TimeLog[]>([]);
+  const [gratitude, setGratitude] = useState<string[]>([]);
 
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -49,6 +53,7 @@ export default function DiaryEditor({
       setTags(initialEntry.tags || []);
       setIsPrivate(initialEntry.is_private);
       setTimeLogs(initialEntry.time_logs || []);
+      setGratitude(initialEntry.gratitude || []);
     } else {
       setId(undefined);
       setTitle("");
@@ -57,15 +62,24 @@ export default function DiaryEditor({
       setTags([]);
       setIsPrivate(true);
       setTimeLogs([]);
+      setGratitude([]);
     }
     setSaveStatus("idle");
   }, [initialEntry, selectedDate]);
 
   // Main save function
   const handleSave = async (isAutoSave = false) => {
-    if (!title.trim() && !content.trim()) {
+    const hasAnyData =
+      Boolean(title.trim()) ||
+      Boolean(content.trim()) ||
+      Boolean(mood) ||
+      timeLogs.length > 0 ||
+      gratitude.length > 0 ||
+      tags.length > 0;
+
+    if (!hasAnyData) {
       if (!isAutoSave) {
-        warning("Please write a title or some content first.");
+        warning("Please add some notes, time logs, or reflection first.");
       }
       return;
     }
@@ -81,13 +95,14 @@ export default function DiaryEditor({
         tags,
         is_private: isPrivate,
         time_logs: timeLogs,
+        gratitude,
       });
       
       setId(saved.id);
       setSaveStatus("saved");
 
       if (!isAutoSave) {
-        success("Journal saved beautifully!");
+        success("Journal & Time Logs saved!");
         // Launch a little confetti celebration!
         confetti({
           particleCount: 80,
@@ -109,8 +124,15 @@ export default function DiaryEditor({
 
   // Debounced auto-save effect
   useEffect(() => {
-    // Only auto-save if there is actually content/changes
-    if (!title.trim() && !content.trim()) return;
+    const hasAnyData =
+      Boolean(title.trim()) ||
+      Boolean(content.trim()) ||
+      Boolean(mood) ||
+      timeLogs.length > 0 ||
+      gratitude.length > 0 ||
+      tags.length > 0;
+
+    if (!hasAnyData) return;
     
     // Check if current values differ from initialEntry to prevent saving unchanged loads
     const hasChanges =
@@ -119,7 +141,8 @@ export default function DiaryEditor({
       mood !== (initialEntry?.mood || "") ||
       JSON.stringify(tags) !== JSON.stringify(initialEntry?.tags || []) ||
       isPrivate !== (initialEntry?.is_private ?? true) ||
-      JSON.stringify(timeLogs) !== JSON.stringify(initialEntry?.time_logs || []);
+      JSON.stringify(timeLogs) !== JSON.stringify(initialEntry?.time_logs || []) ||
+      JSON.stringify(gratitude) !== JSON.stringify(initialEntry?.gratitude || []);
 
     if (!hasChanges) return;
 
@@ -130,14 +153,15 @@ export default function DiaryEditor({
     setSaveStatus("saving");
     autoSaveTimerRef.current = setTimeout(() => {
       handleSave(true);
-    }, 2500); // Auto-save after 2.5s of typing inactivity
+    }, 1500); // Auto-save after 1.5s of inactivity
 
     return () => {
       if (autoSaveTimerRef.current) {
         clearTimeout(autoSaveTimerRef.current);
       }
     };
-  }, [title, content, mood, tags, isPrivate, timeLogs, initialEntry]);
+  }, [title, content, mood, tags, isPrivate, timeLogs, gratitude, initialEntry]);
+
 
   const handleDeleteConfirm = async () => {
     if (!id) return;
@@ -236,13 +260,22 @@ export default function DiaryEditor({
 
       {/* Editor Main Content Area */}
       <div className="space-y-4 pt-2">
-        <input
-          type="text"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          placeholder="Title of your entry..."
-          className="w-full text-xl md:text-2xl font-serif font-semibold bg-transparent border-none outline-none text-foreground placeholder:text-muted-foreground/45 py-1 px-0"
-        />
+        {/* Title row with template selector */}
+        <div className="flex items-center gap-3">
+          <input
+            type="text"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="Title of your entry..."
+            className="flex-1 text-xl md:text-2xl font-serif font-semibold bg-transparent border-none outline-none text-foreground placeholder:text-muted-foreground/45 py-1 px-0"
+          />
+          <TemplateSelector
+            onSelect={(tmplTitle, tmplContent) => {
+              setTitle(tmplTitle);
+              setContent(tmplContent);
+            }}
+          />
+        </div>
 
         {/* Notebook paper-like lined textarea */}
         <div className="relative">
@@ -259,9 +292,12 @@ export default function DiaryEditor({
       {/* Tag Input Component */}
       <TagInput tags={tags} onChange={setTags} />
 
+      {/* Gratitude Journal */}
+      <GratitudeInput items={gratitude} onChange={setGratitude} />
+
       {/* Editor Actions Bottom Bar */}
       <div className="flex items-center justify-between pt-4 border-t border-border mt-6">
-        <div>
+        <div className="flex items-center gap-2">
           {id && (
             <button
               type="button"
@@ -272,6 +308,10 @@ export default function DiaryEditor({
               <span>Delete Entry</span>
             </button>
           )}
+          <ExportButton
+            entry={id ? { id, entry_date: selectedDate, title, content, mood, tags, is_private: isPrivate, time_logs: timeLogs, gratitude, created_at: "", updated_at: "" } : null}
+            selectedDate={selectedDate}
+          />
         </div>
 
         <button
