@@ -18,8 +18,7 @@ export default function ExportButton({ entry, selectedDate }: ExportButtonProps)
 
     try {
       // Dynamic import so jspdf is only loaded when needed (code-splits it)
-      const jspdfModule = await import("jspdf");
-      const jsPDF = jspdfModule.jsPDF || (jspdfModule as any).default;
+      const jsPDF = (await import("jspdf")).default;
       const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
 
       const pageW = 210;

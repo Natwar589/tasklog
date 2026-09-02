@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useMemo, useRef, useEffect } from "react";
-import { Plus, Trash2, Clock, Check, BarChart3, Activity, AlertCircle, Sparkles, TrendingUp, Share2 } from "lucide-react";
+import { Plus, Trash2, Clock, Check, BarChart3, Activity, AlertCircle, Sparkles, TrendingUp, Share2, ClipboardPaste, X, FileText } from "lucide-react";
 import { TimeLog } from "@/lib/diaryService";
 import { motion, AnimatePresence } from "framer-motion";
 import { useToast } from "@/components/ui/Toast";
@@ -249,6 +249,8 @@ export default function TimeLogger({ timeLogs = [], onChange }: TimeLoggerProps)
   const [recurrence, setRecurrence] = useState<"daily" | "weekly" | "">("");
   const [validationError, setValidationError] = useState("");
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [importText, setImportText] = useState("");
   const [expandedLog, setExpandedLog] = useState<string | null>(null);
   const [subtaskInput, setSubtaskInput] = useState<Record<string, string>>({});
 
@@ -390,6 +392,58 @@ export default function TimeLogger({ timeLogs = [], onChange }: TimeLoggerProps)
     setSubtaskInput((prev) => ({ ...prev, [logId]: "" }));
   };
 
+  const handleImportLogs = () => {
+    if (!importText.trim()) return;
+    const lines = importText.split("\n").map((l) => l.trim()).filter(Boolean);
+    const newParsedLogs: TimeLog[] = [];
+
+    for (const line of lines) {
+      // Matches "09:00 - 10:00 : task" or "09:00 - 10:00 task" or "09:00-10:00: task"
+      const match = line.match(/^(\d{1,2}:\d{2})\s*[-–—to]+\s*(\d{1,2}:\d{2})\s*[:\-]?\s*(.*)$/i);
+      if (match) {
+        const start = match[1].padStart(5, "0");
+        const end = match[2].padStart(5, "0");
+        const act = match[3]?.trim() || "Work block";
+
+        // Auto-detect category from keywords
+        let detectedCategory = "Coding";
+        const lower = act.toLowerCase();
+        if (lower.includes("meeting") || lower.includes("standup") || lower.includes("call") || lower.includes("sync")) {
+          detectedCategory = "Meeting";
+        } else if (lower.includes("learn") || lower.includes("read") || lower.includes("study") || lower.includes("course") || lower.includes("python")) {
+          detectedCategory = "Learning";
+        } else if (lower.includes("plan") || lower.includes("review") || lower.includes("roadmap")) {
+          detectedCategory = "Planning";
+        } else if (lower.includes("design") || lower.includes("ui") || lower.includes("figma")) {
+          detectedCategory = "Design";
+        } else if (lower.includes("break") || lower.includes("lunch") || lower.includes("coffee") || lower.includes("walk")) {
+          detectedCategory = "Break";
+        } else if (lower.includes("office") || lower.includes("work") || lower.includes("admin") || lower.includes("email")) {
+          detectedCategory = "Other";
+        }
+
+        newParsedLogs.push({
+          id: crypto.randomUUID(),
+          start_time: start,
+          end_time: end,
+          activity: act,
+          category: detectedCategory,
+          subtasks: [],
+        });
+      }
+    }
+
+    if (newParsedLogs.length === 0) {
+      warning("No valid time logs detected. Format: 09:00 - 10:00 : Task name");
+      return;
+    }
+
+    onChange([...timeLogs, ...newParsedLogs]);
+    success(`Imported ${newParsedLogs.length} time log${newParsedLogs.length > 1 ? "s" : ""}!`);
+    setImportText("");
+    setIsImportModalOpen(false);
+  };
+
   const handleCopyLogs = () => {
     if (sortedLogs.length === 0) {
       warning("No time logs to copy.");
@@ -422,7 +476,17 @@ export default function TimeLogger({ timeLogs = [], onChange }: TimeLoggerProps)
           </div>
         </div>
 
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-2 flex-wrap">
+          <button
+            type="button"
+            onClick={() => setIsImportModalOpen(true)}
+            className="flex items-center gap-1.5 px-3.5 py-2 bg-muted/60 hover:bg-muted text-foreground rounded-xl transition-all text-xs font-semibold calm-shadow cursor-pointer border border-border"
+            title="Paste multiple time logs at once"
+          >
+            <ClipboardPaste className="w-3.5 h-3.5 text-primary" />
+            <span>Paste logs</span>
+          </button>
+
           {sortedLogs.length > 0 && (
             <>
               <button
@@ -875,6 +939,76 @@ export default function TimeLogger({ timeLogs = [], onChange }: TimeLoggerProps)
 
         </div>
       )}
+
+      {/* Bulk Import / Paste Logs Modal */}
+      <AnimatePresence>
+        {isImportModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/60 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              className="w-full max-w-lg bg-card border border-border rounded-2xl p-6 calm-shadow shadow-2xl space-y-4 relative"
+            >
+              <div className="flex items-center justify-between pb-3 border-b border-border">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
+                    <ClipboardPaste className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h4 className="font-serif font-bold text-base text-foreground">Paste / Import Time Logs</h4>
+                    <p className="text-xs text-muted-foreground">Paste multiple lines in 24h format</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsImportModalOpen(false)}
+                  className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <div className="space-y-2">
+                <div className="text-[11px] text-muted-foreground bg-muted/40 p-2.5 rounded-xl border border-border/60 space-y-1 font-mono">
+                  <p className="font-bold text-foreground font-sans">Supported Format:</p>
+                  <p>09:00 - 10:00 : Brainstorming session</p>
+                  <p>10:00 - 11:00 : Learn Python & Django</p>
+                  <p>12:00 - 20:00 : Office work</p>
+                </div>
+
+                <textarea
+                  rows={6}
+                  value={importText}
+                  onChange={(e) => setImportText(e.target.value)}
+                  placeholder="09:00 - 10:00 : Task title&#10;10:00 - 11:00 : Another activity&#10;12:00 - 18:00 : Deep focus work"
+                  className="w-full p-3 bg-muted/30 border border-border rounded-xl text-xs font-mono text-foreground outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20 transition-all placeholder:text-muted-foreground/40 leading-relaxed resize-none"
+                  autoFocus
+                />
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setIsImportModalOpen(false)}
+                  className="flex-1 py-2.5 rounded-xl text-xs font-semibold bg-muted hover:bg-muted/80 text-foreground transition-all"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleImportLogs}
+                  disabled={!importText.trim()}
+                  className="flex-1 py-2.5 rounded-xl text-xs font-bold bg-primary text-primary-foreground hover:opacity-90 transition-all calm-shadow disabled:opacity-50 flex items-center justify-center gap-1.5"
+                >
+                  <Check className="w-4 h-4" />
+                  Import to Timeline
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
